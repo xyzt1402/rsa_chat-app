@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>HTML Chat</title>
+
+	<style>
+		.up {
+			color: green;
+		}
+
+		.down {
+			color: red;
+		}
+	</style>
+</head>
+
+<body>
+	<h1>Chat</h1>
+	<ul id="messages"></ul>
+
+	<form action="" id="form">
+		<span id="name"></span> <input type="text" id="input">
+		<button>Gửi</button>
+		p = <span id="p_key"></span>
+	</form>
+</body>
+
+<script src="https://cdn.jsdelivr.net/npm/node-forge@0.7.0/dist/forge.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+	const socket = io();
+	var rsa = forge.pki.rsa;
+
+	const name = prompt('Bạn tên gì?')
+	const nameSpan = document.querySelector('#name')
+	nameSpan.innerText = name
+
+	const form = document.querySelector('#form')
+	const input = document.querySelector('#input')
+
+	generateKeyPair()
+
+	function generateKeyPair() {
+		console.log("generate")
+		const p_key = document.getElementById('p_key')
+		rsa.generateKeyPair({bits: 128, workers: -1}, function(err, keypair) {
+			console.log(document.getElementById("p_key").innerText = keypair.privateKey.p.data[0])
+			
+		});
+	} 
+
+	form.addEventListener('submit', (e) => {
+		e.preventDefault()
+		if (input.value) {
+			socket.emit('chat', {
+				name,
+				value: input.value
+			})
+			input.value = ''
+		}
+	})
+	const messages = document.querySelector('#messages')
+	socket.on('chat', (message) => {
+		const li = document.createElement('li')
+		li.textContent = `${message.name}: ${message.value}`
+		messages.appendChild(li)
+	})
+</script>
+
+</html>
