@@ -78,7 +78,7 @@
 		e.preventDefault()
 		if (input.value) {
 			msgList.push({
-				id: id,
+				id: userlistNode.value + '%',
 				msg: input.value
 			})
 			let pem = userlist[userlistNode.value].publicKey
@@ -131,9 +131,14 @@
 	function refreshChat() {
 		msgListNode.innerHTML = ""
 		msgList.forEach(data => {
-			if (data.id == userlistNode.value | data.id == id) {
+			if (data.id == userlistNode.value | data.id == userlistNode.value + "%") {
 				let li = document.createElement('li')
-				li.textContent = `${userlist[data.id].name} #${data.id} : ${data.msg}`
+
+				if (data.id == userlistNode.value + "%"){
+					li.textContent = `you : ${data.msg}`
+				}else{
+					li.textContent = `${userlist[data.id].name} #${data.id} : ${data.msg}`
+				}
 				msgListNode.appendChild(li)
 			}
 		});
