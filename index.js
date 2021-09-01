@@ -9,7 +9,6 @@ const app = express()
 const server = http.createServer(app)
 const io = new Server(server)
 var userList = []
-var id = 0
 
 app.get('/', (req, res) => {
 	res.sendFile(__dirname + '/index.html')
@@ -23,12 +22,18 @@ io.on('connection', (socket) => {
 		io.emit('chat', message)
 	})
 	socket.on('sendPublicKey', data => {
-		id += 1
-		data.id = id
+		data.socket_id = socket.id
 		userList.push(data)
 		io.emit('getPublicKey', userList)
+		console.log(data)
 	})
-	// io.emit('getPublicKey', userList)
+	socket.on('privateChat', data=>{
+		let id = data.receiveID
+		io.to(userList[id].socket_id).emit('privateMsgFromServer', {
+			sendID: data.id,
+			encryptMsg: data.encryptMsg
+		})
+	})
 })
 
 server.listen(3000, () => {

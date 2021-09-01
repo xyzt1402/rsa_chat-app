@@ -20,6 +20,10 @@
 
 <body>
 	<h1>Chat</h1>
+	<label for="user">Choose a user:</label>
+	<select id="userOption" onchange="refreshChat()">
+		<!-- <option value="volvo">Volvo</option> -->
+	</select>
 	<form action="" id="form">
 		<span id="name"></span> <input type="text" id="input">
 		<button>Gửi</button>
@@ -29,8 +33,8 @@
 		<ul id="publicKeyList"></ul>
 	</div>
 	<div>
-		<h3>messages</h3>
-		<ul id="messages"></ul>
+		<h3>your messages</h3>
+		<ul id="yourMsg"></ul>
 	</div>
 </body>
 
@@ -39,7 +43,10 @@
 <script>
 	const socket = io();
 	var rsa = forge.pki.rsa;
-	var id = -1;
+	var userlist = []
+	var id = -1
+	var keyPair = null
+	var msgList = []
 
 	var name = prompt('Bạn tên gì?')
 	var nameSpan = document.querySelector('#name')
@@ -47,6 +54,9 @@
 
 	const form = document.querySelector('#form')
 	const input = document.querySelector('#input')
+	const publicKeyListNode = document.getElementById("publicKeyList")
+	const userlistNode = document.getElementById("userOption")
+	const msgListNode = document.getElementById("yourMsg")
 
 	generateKeyPair()
 
@@ -55,27 +65,62 @@
 		rsa.generateKeyPair({ bits: 4096, workers: -1 }, function (err, keypair) {
 			// let enText =  keypair.publicKey.encrypt(forge.util.encodeUtf8("Some text"))
 			// console.log(keypair.publicKey.decrypt(enText))
+			keyPair = keypair
 			socket.emit('sendPublicKey', {
 				name: name,
-				value: keypair.publicKey
+				publicKey: forge.pki.publicKeyToPem(keypair.publicKey)
 			})
 		});
 	}
 
-	// send msg
+	// send private msg
 	form.addEventListener('submit', (e) => {
 		e.preventDefault()
 		if (input.value) {
-			socket.emit('chat', {
+			msgList.push({
+				id: id,
+				msg: input.value
+			})
+			let pem = userlist[userlistNode.value].publicKey
+			let publicKey = forge.pki.publicKeyFromPem(pem)
+			let encryptMsg = publicKey.encrypt(forge.util.encodeUtf8(input.value))
+			socket.emit('privateChat', {
 				id,
-				name,
-				value: input.value
+				encryptMsg,
+				receiveID: userlistNode.value,
 			})
 			input.value = ''
+			refreshChat()
 		}
 	})
 
-	// received msg
+
+	// received private msg
+	socket.on("privateMsgFromServer", (data) => {
+		let msg = keyPair.privateKey.decrypt(data.encryptMsg)
+		msgList.push({
+			id: data.sendID,
+			msg: msg
+		})
+		let li = document.createElement('li')
+		li.textContent = `${userlist[data.sendID].name} #${data.sendID} : ${msg}`
+		msgListNode.appendChild(li)
+	})
+
+	// send msg to group
+	// form.addEventListener('submit', (e) => {
+	// 	e.preventDefault()
+	// 	if (input.value) {
+	// 		socket.emit('chat', {
+	// 			id,
+	// 			name,
+	// 			value: input.value
+	// 		})
+	// 		input.value = ''
+	// 	}
+	// })
+
+	// received msg from group
 	const messages = document.querySelector('#messages')
 	socket.on('chat', (message) => {
 		const li = document.createElement('li')
@@ -83,22 +128,41 @@
 		messages.appendChild(li)
 	})
 
+	function refreshChat() {
+		msgListNode.innerHTML = ""
+		msgList.forEach(data => {
+			if (data.id == userlistNode.value | data.id == id) {
+				let li = document.createElement('li')
+				li.textContent = `${userlist[data.id].name} #${data.id} : ${data.msg}`
+				msgListNode.appendChild(li)
+			}
+		});
+	}
+
+
 	// received publicKey
-	const publicKeyList = document.getElementById("publicKeyList")
 	socket.on('getPublicKey', (userList) => {
 		console.log(userList)
-		publicKeyList.innerHTML = ""
+		userlist = userList
+		publicKeyListNode.innerHTML = ""
+		userlistNode.innerHTML = ""
 
 		if (id == -1) {
-			id = userList[userList.length - 1].id
+			id = userList.length - 1
 			nameSpan.innerText = `${name} #${id}`
 		}
+		for (let i = 0; i < userList.length; i++) {
+			let user = userList[i]
+			if (i != id) {
+				const li = document.createElement('li')
+				li.textContent = `${user.name} #${i}`
+				publicKeyListNode.appendChild(li)
 
-		for (let i = 0; i < userList.length - 1; i++) {
-			let msg = userList[i]
-			const li = document.createElement('li')
-			li.textContent = `${msg.name} #${msg.id}`
-			publicKeyList.appendChild(li)
+				const opt = document.createElement('option')
+				opt.value = i
+				opt.textContent = `${user.name} #${i}`
+				userlistNode.appendChild(opt)
+			}
 		}
 	})
 </script>
