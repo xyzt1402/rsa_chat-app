@@ -20,13 +20,18 @@
 
 <body>
 	<h1>Chat</h1>
-	<ul id="messages"></ul>
-
 	<form action="" id="form">
 		<span id="name"></span> <input type="text" id="input">
 		<button>Gửi</button>
-		p = <span id="p_key"></span>
 	</form>
+	<div>
+		<h3>user list</h3>
+		<ul id="publicKeyList"></ul>
+	</div>
+	<div>
+		<h3>messages</h3>
+		<ul id="messages"></ul>
+	</div>
 </body>
 
 <script src="https://cdn.jsdelivr.net/npm/node-forge@0.7.0/dist/forge.min.js"></script>
@@ -34,9 +39,10 @@
 <script>
 	const socket = io();
 	var rsa = forge.pki.rsa;
+	var id = -1;
 
-	const name = prompt('Bạn tên gì?')
-	const nameSpan = document.querySelector('#name')
+	var name = prompt('Bạn tên gì?')
+	var nameSpan = document.querySelector('#name')
 	nameSpan.innerText = name
 
 	const form = document.querySelector('#form')
@@ -45,29 +51,55 @@
 	generateKeyPair()
 
 	function generateKeyPair() {
-		console.log("generate")
 		const p_key = document.getElementById('p_key')
-		rsa.generateKeyPair({bits: 128, workers: -1}, function(err, keypair) {
-			console.log(document.getElementById("p_key").innerText = keypair.privateKey.p.data[0])
-			
+		rsa.generateKeyPair({ bits: 4096, workers: -1 }, function (err, keypair) {
+			// let enText =  keypair.publicKey.encrypt(forge.util.encodeUtf8("Some text"))
+			// console.log(keypair.publicKey.decrypt(enText))
+			socket.emit('sendPublicKey', {
+				name: name,
+				value: keypair.publicKey
+			})
 		});
-	} 
+	}
 
+	// send msg
 	form.addEventListener('submit', (e) => {
 		e.preventDefault()
 		if (input.value) {
 			socket.emit('chat', {
+				id,
 				name,
 				value: input.value
 			})
 			input.value = ''
 		}
 	})
+
+	// received msg
 	const messages = document.querySelector('#messages')
 	socket.on('chat', (message) => {
 		const li = document.createElement('li')
-		li.textContent = `${message.name}: ${message.value}`
+		li.textContent = `${message.name} #${message.id}: ${message.value}`
 		messages.appendChild(li)
+	})
+
+	// received publicKey
+	const publicKeyList = document.getElementById("publicKeyList")
+	socket.on('getPublicKey', (userList) => {
+		console.log(userList)
+		publicKeyList.innerHTML = ""
+
+		if (id == -1) {
+			id = userList[userList.length - 1].id
+			nameSpan.innerText = `${name} #${id}`
+		}
+
+		for (let i = 0; i < userList.length - 1; i++) {
+			let msg = userList[i]
+			const li = document.createElement('li')
+			li.textContent = `${msg.name} #${msg.id}`
+			publicKeyList.appendChild(li)
+		}
 	})
 </script>
 

@@ -8,6 +8,8 @@ const delay = require('delay')
 const app = express()
 const server = http.createServer(app)
 const io = new Server(server)
+var userList = []
+var id = 0
 
 app.get('/', (req, res) => {
 	res.sendFile(__dirname + '/index.html')
@@ -15,23 +17,20 @@ app.get('/', (req, res) => {
 
 io.on('connection', (socket) => {
 	console.log('user connect')
-
+	console.log(io.sockets.allSockets())
 	socket.on('chat', message => {
 		console.log(message)
 		io.emit('chat', message)
 	})
+	socket.on('sendPublicKey', data => {
+		id += 1
+		data.id = id
+		userList.push(data)
+		io.emit('getPublicKey', userList)
+	})
+	// io.emit('getPublicKey', userList)
 })
 
 server.listen(3000, () => {
 	console.log('Example app listening on port 3000!')
 })
-
-async function broadcastCoinPrice() {
-	while (true) {
-		const price = 38345 + Math.random() * 300
-		io.emit('price', parseFloat(price.toFixed(3)))
-		await delay(500)
-	}
-}
-
-broadcastCoinPrice()
