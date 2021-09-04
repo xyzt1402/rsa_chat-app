@@ -1,23 +1,22 @@
 const express = require('express')
+const path = require('path');
 const http = require('http')
 const {
 	Server
 } = require('socket.io')
-const delay = require('delay')
 
 const app = express()
 const server = http.createServer(app)
 const io = new Server(server)
 var userList = []
 
-app.get('/', (req, res) => {
-	res.sendFile(__dirname + '/index.html')
-})
+// Set static folder
+app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
 	console.log('user connect')
 	console.log(io.sockets.allSockets())
-	socket.on('chat', message => {
+	socket.on('groupChat', message => {
 		console.log(message)
 		io.emit('chat', message)
 	})

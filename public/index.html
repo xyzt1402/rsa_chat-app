@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>HTML Chat</title>
+
+	<style>
+		.up {
+			color: green;
+		}
+
+		.down {
+			color: red;
+		}
+	</style>
+</head>
+
+<body>
+	<h1>Chat</h1>
+	<label for="user">Choose a user:</label>
+	<select id="userOption" onchange="refreshChat()">
+		<!-- <option value="volvo">Volvo</option> -->
+	</select>
+	<form action="" id="form">
+		<span id="name"></span> <input type="text" id="input">
+		<button>Gửi</button>
+	</form>
+	<div>
+		<h3>user list</h3>
+		<ul id="publicKeyList"></ul>
+	</div>
+	<div>
+		<h3>your messages</h3>
+		<ul id="yourMsg"></ul>
+	</div>
+</body>
+
+<script src="https://cdn.jsdelivr.net/npm/node-forge@0.7.0/dist/forge.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="./js/index.js"></script>
+
+</html>
