@@ -1,9 +1,11 @@
 const socket = io();
-var rsa = forge.pki.rsa;
+const rsa = forge.pki.rsa;
+
 var userlist = []
 var id = -1
 var keyPair = null
 var msgList = []
+var groupMsgList = []
 
 var name = prompt('Bạn tên gì?')
 var nameSpan = document.querySelector('#name')
@@ -18,10 +20,7 @@ const msgListNode = document.getElementById("yourMsg")
 generateKeyPair()
 
 function generateKeyPair() {
-    const p_key = document.getElementById('p_key')
     rsa.generateKeyPair({ bits: 4096, workers: -1 }, function (err, keypair) {
-        // let enText =  keypair.publicKey.encrypt(forge.util.encodeUtf8("Some text"))
-        // console.log(keypair.publicKey.decrypt(enText))
         keyPair = keypair
         socket.emit('sendPublicKey', {
             name: name,
@@ -30,38 +29,34 @@ function generateKeyPair() {
     });
 }
 
-// function outputMessage(message) {
-//     const div = document.createElement('div');
-//     div.classList.add('message');
-//     const p = document.createElement('p');
-//     p.classList.add('meta');
-//     p.innerText = message.username;
-//     p.innerHTML += `<span>${message.time}</span>`;
-//     div.appendChild(p);
-//     const para = document.createElement('p');
-//     para.classList.add('text');
-//     para.innerText = message.text;
-//     div.appendChild(para);
-//     document.querySelector('.chat-messages').appendChild(div);
-// }
-
-
-// send private msg
+// send msg
 form.addEventListener('submit', (e) => {
     e.preventDefault()
     if (input.value) {
-        msgList.push({
-            id: userlistNode.value + '%',
-            msg: input.value
-        })
-        let pem = userlist[userlistNode.value].publicKey
-        let publicKey = forge.pki.publicKeyFromPem(pem)
-        let encryptMsg = publicKey.encrypt(forge.util.encodeUtf8(input.value))
-        socket.emit('privateChat', {
-            id,
-            encryptMsg,
-            receiveID: userlistNode.value,
-        })
+        if (userlistNode.value == 'all') {
+            socket.emit('groupChat', {
+                id,
+                msg: input.value
+            })
+        } else {
+            msgList.push({
+                id: userlistNode.value + '%',
+                msg: input.value
+            })
+            let pem = userlist[userlistNode.value].publicKey
+            let publicKey = forge.pki.publicKeyFromPem(pem)
+            let encryptMsg = publicKey.encrypt(forge.util.encodeUtf8(input.value))
+
+            let md = forge.md.sha256.create();
+            md.update(encryptMsg);
+            let signedMsg = keyPair.privateKey.sign(md)
+            socket.emit('privateChat', {
+                id,
+                encryptMsg,
+                receiveID: userlistNode.value,
+                signedMsg,
+            })
+        }
         input.value = ''
         refreshChat()
     }
@@ -70,51 +65,67 @@ form.addEventListener('submit', (e) => {
 
 // received private msg
 socket.on("privateMsgFromServer", (data) => {
-    let msg = keyPair.privateKey.decrypt(data.encryptMsg)
-    msgList.push({
-        id: data.sendID,
-        msg: msg
-    })
-    let li = document.createElement('li')
-    li.textContent = `${userlist[data.sendID].name} #${data.sendID} : ${msg}`
-    msgListNode.appendChild(li)
-})
+    let pem = userlist[data.sendID].publicKey
+    let publicKey = forge.pki.publicKeyFromPem(pem)
 
-// send msg to group
-// form.addEventListener('submit', (e) => {
-// 	e.preventDefault()
-// 	if (input.value) {
-// 		socket.emit('chat', {
-// 			id,
-// 			name,
-// 			value: input.value
-// 		})
-// 		input.value = ''
-// 	}
-// })
+    let md = forge.md.sha256.create();
+    md.update(data.encryptMsg)
+    let hashedMsg = md.digest().bytes();
+
+    try {
+        if (publicKey.verify(hashedMsg, data.signedMsg)) {
+            let msg = keyPair.privateKey.decrypt(data.encryptMsg)
+            msgList.push({
+                id: data.sendID,
+                msg: msg
+            })
+            refreshChat()
+        } else {
+            console.log(data.sendID)
+            alert("tin nhan ko hop le")
+        }
+    } catch (error) {
+        alert(error)
+    }
+})
 
 // received msg from group
-const messages = document.querySelector('#messages')
-socket.on('chat', (message) => {
-    const li = document.createElement('li')
-    li.textContent = `${message.name} #${message.id}: ${message.value}`
-    messages.appendChild(li)
+socket.on('groupChatFromServer', (data) => {
+    groupMsgList.push({
+        id: data.id,
+        msg: data.msg
+    })
+    refreshChat()
 })
 
+
+// update chat msg
 function refreshChat() {
     msgListNode.innerHTML = ""
-    msgList.forEach(data => {
-        if (data.id == userlistNode.value | data.id == userlistNode.value + "%") {
+    if (userlistNode.value == "all") {
+        groupMsgList.forEach(data => {
             let li = document.createElement('li')
-
-            if (data.id == userlistNode.value + "%") {
+            if (data.id == id) {
                 li.textContent = `you : ${data.msg}`
             } else {
                 li.textContent = `${userlist[data.id].name} #${data.id} : ${data.msg}`
             }
             msgListNode.appendChild(li)
-        }
-    });
+        })
+    } else {
+        msgList.forEach(data => {
+            if (data.id == userlistNode.value | data.id == userlistNode.value + "%") {
+                let li = document.createElement('li')
+
+                if (data.id == userlistNode.value + "%") {
+                    li.textContent = `you : ${data.msg}`
+                } else {
+                    li.textContent = `${userlist[data.id].name} #${data.id} : ${data.msg}`
+                }
+                msgListNode.appendChild(li)
+            }
+        });
+    }
 }
 
 
@@ -129,6 +140,14 @@ socket.on('getPublicKey', (userList) => {
         id = userList.length - 1
         nameSpan.innerText = `${name} #${id}`
     }
+
+    // group chat option
+    const opt = document.createElement('option')
+    opt.value = "all"
+    opt.textContent = "all"
+    userlistNode.appendChild(opt)
+
+    // update user option
     for (let i = 0; i < userList.length; i++) {
         let user = userList[i]
         if (i != id) {

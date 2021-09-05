@@ -14,11 +14,12 @@ var userList = []
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
+
 	console.log('user connect')
-	console.log(io.sockets.allSockets())
-	socket.on('groupChat', message => {
-		console.log(message)
-		io.emit('chat', message)
+
+	socket.on('groupChat', data => {
+		console.log(data)
+		io.emit('groupChatFromServer', data)
 	})
 	socket.on('sendPublicKey', data => {
 		data.socket_id = socket.id
@@ -28,9 +29,11 @@ io.on('connection', (socket) => {
 	})
 	socket.on('privateChat', data=>{
 		let id = data.receiveID
+		console.log(data)
 		io.to(userList[id].socket_id).emit('privateMsgFromServer', {
 			sendID: data.id,
-			encryptMsg: data.encryptMsg
+			encryptMsg: data.encryptMsg,
+			signedMsg: data.signedMsg,
 		})
 	})
 })
