@@ -6,36 +6,36 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>HTML Chat</title>
-
-	<style>
-		.up {
-			color: green;
-		}
-
-		.down {
-			color: red;
-		}
-	</style>
+	<link rel="stylesheet" href="./css/style.css">
 </head>
 
 <body>
-	<h1>Chat</h1>
-	<label for="user">Choose a user:</label>
-	<select id="userOption" onchange="refreshChat()">
+	<h1>RSA Chat App</h1>
+	<div id='wrapper'>
+		<div id='chooseUser'>
+			<label for="user">Choose a user:</label>
+			<select id="userOption" onchange="refreshChat()"></select>
+		</div>
 		<!-- <option value="volvo">Volvo</option> -->
 	</select>
+	<div id='userList'>
+		<h3>User list</h3>
+		<ul id="publicKeyList"></ul>
+	</div>
+	<div class="yourMsg">
+		<h3>Your messages</h3>
+	</div>
+	<div id="chatbox">
+		<ul id="yourMsg"></ul>
+		<li>helloooooo</li>
+		<li>huuuuuuuuuuuuuuuuuuu</li>
+	</div>
 	<form action="" id="form">
 		<span id="name"></span> <input type="text" id="input">
 		<button>Gửi</button>
 	</form>
-	<div>
-		<h3>user list</h3>
-		<ul id="publicKeyList"></ul>
 	</div>
-	<div>
-		<h3>your messages</h3>
-		<ul id="yourMsg"></ul>
-	</div>
+	
 </body>
 
 <script src="https://cdn.jsdelivr.net/npm/node-forge@0.7.0/dist/forge.min.js"></script>
